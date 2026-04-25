@@ -28,4 +28,8 @@ export class DatabaseService {
     async deleteUser(id: string): Promise<User | null> {
         return this.userModel.findByIdAndDelete(id).exec();
     }
+
+    async findUserByEmail(email: string): Promise<User | null> {
+        return this.userModel.findOne({ email }).exec();
+    }
 }
