@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
-import { DatabaseService } from '@modules/database/database.service';
 import { KafkaService } from '@modules/kafka/kafka.service';
 import { CacheService } from '@modules/cache/cache.service';
+import { UserRepository } from './repositories/user.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -11,14 +11,14 @@ const CACHE_TTL = 300;
 @Injectable()
 export class UsersService {
     constructor(
-        private readonly databaseService: DatabaseService,
+        private readonly userRepository: UserRepository,
         private readonly kafkaService: KafkaService,
         private readonly cacheService: CacheService,
-    ) {}
+    ) { }
 
     async create(dto: CreateUserDto) {
         const hashed = await bcrypt.hash(dto.password, 10);
-        const user = await this.databaseService.createUser({ ...dto, password: hashed });
+        const user = await this.userRepository.create({ ...dto, password: hashed });
 
         await this.cacheService.del('users:all');
         await this.kafkaService.sendMessage('user.created', {
@@ -34,7 +34,7 @@ export class UsersService {
         const cached = await this.cacheService.get<any[]>('users:all');
         if (cached) return cached;
 
-        const users = await this.databaseService.findAllUsers();
+        const users = await this.userRepository.findAll();
         const sanitized = users.map(u => this.sanitize(u));
         await this.cacheService.set('users:all', sanitized, CACHE_TTL);
         return sanitized;
@@ -45,7 +45,7 @@ export class UsersService {
         const cached = await this.cacheService.get<any>(cacheKey);
         if (cached) return cached;
 
-        const user = await this.databaseService.findUserById(id);
+        const user = await this.userRepository.findById(id);
         if (!user) throw new NotFoundException(`Không tìm thấy user với id ${id}`);
 
         const sanitized = this.sanitize(user);
@@ -54,11 +54,11 @@ export class UsersService {
     }
 
     async findByEmail(email: string) {
-        return this.databaseService.findUserByEmail(email);
+        return this.userRepository.findByEmail(email);
     }
 
     async update(id: string, dto: UpdateUserDto) {
-        const user = await this.databaseService.updateUser(id, dto);
+        const user = await this.userRepository.update(id, dto);
         if (!user) throw new NotFoundException(`Không tìm thấy user với id ${id}`);
 
         await Promise.all([
@@ -75,7 +75,7 @@ export class UsersService {
     }
 
     async remove(id: string) {
-        const user = await this.databaseService.deleteUser(id);
+        const user = await this.userRepository.delete(id);
         if (!user) throw new NotFoundException(`Không tìm thấy user với id ${id}`);
 
         await Promise.all([
