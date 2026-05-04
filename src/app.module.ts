@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from '@modules/users/users.module';
 import { AuthModule } from '@modules/auth/auth.module';
+import { OrdersModule } from '@modules/orders/orders.module';
 import { DatabaseModule } from '@modules/database/database.module';
 import { CacheModule } from '@modules/cache/cache.module';
 import { KafkaModule } from '@modules/kafka/kafka.module';
@@ -24,6 +25,7 @@ import kafkaConfig from './config/kafka.config';
         KafkaModule,
         UsersModule,
         AuthModule,
+        OrdersModule,
     ],
     controllers: [AppController],
     providers: [AppService],

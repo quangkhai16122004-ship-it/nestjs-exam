@@ -4,12 +4,22 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { LoggingInterceptor } from '@common/interceptors/logging/logging.interceptor';
+import { join } from 'path';
 
 const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
+
+    app.connectMicroservice<MicroserviceOptions>({
+        transport: Transport.GRPC,
+        options: {
+            package: 'user',
+            protoPath: join(__dirname, 'proto/user.proto'),
+            url: `0.0.0.0:${configService.get<number>('GRPC_PORT') ?? 5000}`,
+        },
+    });
 
     app.connectMicroservice<MicroserviceOptions>({
         transport: Transport.KAFKA,
@@ -36,7 +46,10 @@ async function bootstrap() {
     logger.log(`HTTP server đang chạy tại port ${process.env.PORT ?? 3000}`);
 
     app.startAllMicroservices()
-        .then(() => logger.log('Kafka consumer đã kết nối'))
-        .catch(err => logger.warn(`Kafka consumer không khởi động được: ${err.message}`));
+        .then(() => {
+            logger.log(`gRPC server đang chạy tại port ${configService.get('GRPC_PORT') ?? 5000}`);
+            logger.log('Kafka consumer đã kết nối');
+        })
+        .catch(err => logger.warn(`Microservice không khởi động được: ${err.message}`));
 }
 bootstrap();
